@@ -87,10 +87,6 @@ body {
     overflow: hidden;
 }
 
-.btn-day-hit {
-    display: none;
-}
-
 .calendar-day.empty {
     background: transparent;
     border-color: transparent;
@@ -235,6 +231,11 @@ body {
 }
 
 @media (max-width: 768px) {
+    .container {
+        width: 90vw;
+        max-width: 90vw;
+    }
+
     .calendar-card-body {
         padding: 0.5rem;
     }
@@ -253,31 +254,14 @@ body {
     }
 
     .calendar-day {
-        position: relative;
         min-height: 40px;
         padding: 0;
-        align-items: stretch;
-        justify-content: stretch;
     }
 
     .calendar-day-header,
     .day-total,
     .calendar-events-desktop {
         display: none !important;
-    }
-
-    .btn-day-hit {
-        display: block;
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        padding: 0;
-        border: 0;
-        border-radius: inherit;
-        background: transparent;
-        cursor: pointer;
-        z-index: 1;
     }
 
     .calendar-day.day-unassigned { background: #94a3b8; }
