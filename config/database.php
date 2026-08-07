@@ -66,12 +66,27 @@ function initDatabase(PDO $pdo): void
     ");
 
     $pdo->exec("
+        CREATE TABLE IF NOT EXISTS personas (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            usuario_id INT NOT NULL,
+            nombre VARCHAR(100) NOT NULL,
+            color VARCHAR(7) NOT NULL DEFAULT '#0d6efd',
+            activo TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uk_personas_usuario_nombre (usuario_id, nombre),
+            CONSTRAINT fk_personas_usuario
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    $pdo->exec("
         CREATE TABLE IF NOT EXISTS cuentas (
             id INT AUTO_INCREMENT PRIMARY KEY,
             usuario_id INT NOT NULL,
             nombre VARCHAR(200) NOT NULL,
             monto DECIMAL(12,2) NOT NULL DEFAULT 0,
             fecha_vencimiento DATE NOT NULL,
+            persona_id INT NULL,
             tipo_pago_id INT NULL,
             pago_fijo_id INT NULL,
             valor_asignado TINYINT(1) NOT NULL DEFAULT 0,
@@ -96,6 +111,7 @@ function initDatabase(PDO $pdo): void
             dia_pago TINYINT NOT NULL,
             tipo_monto ENUM('variable', 'fijo') NOT NULL DEFAULT 'variable',
             monto DECIMAL(12,2) NOT NULL DEFAULT 0,
+            persona_id INT NULL,
             tipo_pago_id INT NULL,
             notas TEXT NULL,
             activo TINYINT(1) NOT NULL DEFAULT 1,
@@ -109,6 +125,7 @@ function initDatabase(PDO $pdo): void
 
     migrateCuentasColumns($pdo);
     migratePagosFijosColumns($pdo);
+    migratePersonasColumns($pdo);
     migrateTiposPagoEcuador($pdo);
     migrateValorAsignado($pdo);
     migrateUsuarios($pdo);
@@ -174,12 +191,67 @@ function migratePagosFijosColumns(PDO $pdo): void
     if (!$monto) {
         $pdo->exec('ALTER TABLE pagos_fijos ADD COLUMN monto DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER tipo_monto');
     }
+
+    $persona = $pdo->query("SHOW COLUMNS FROM pagos_fijos LIKE 'persona_id'")->fetch();
+    if (!$persona) {
+        $pdo->exec('ALTER TABLE pagos_fijos ADD COLUMN persona_id INT NULL AFTER monto');
+    }
+}
+
+function migratePersonasColumns(PDO $pdo): void
+{
+    $cuentaPersona = $pdo->query("SHOW COLUMNS FROM cuentas LIKE 'persona_id'")->fetch();
+    if (!$cuentaPersona) {
+        $pdo->exec('ALTER TABLE cuentas ADD COLUMN persona_id INT NULL AFTER fecha_vencimiento');
+    }
+
+    try {
+        $fk = $pdo->query("
+            SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'cuentas'
+              AND COLUMN_NAME = 'persona_id'
+              AND REFERENCED_TABLE_NAME = 'personas'
+        ")->fetch();
+        if (!$fk) {
+            $pdo->exec('
+                ALTER TABLE cuentas
+                ADD CONSTRAINT fk_cuentas_persona
+                FOREIGN KEY (persona_id) REFERENCES personas(id) ON DELETE SET NULL
+            ');
+        }
+    } catch (PDOException) {
+        // FK opcional en instalaciones antiguas.
+    }
+
+    try {
+        $fk = $pdo->query("
+            SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'pagos_fijos'
+              AND COLUMN_NAME = 'persona_id'
+              AND REFERENCED_TABLE_NAME = 'personas'
+        ")->fetch();
+        if (!$fk) {
+            $pdo->exec('
+                ALTER TABLE pagos_fijos
+                ADD CONSTRAINT fk_pagos_fijos_persona
+                FOREIGN KEY (persona_id) REFERENCES personas(id) ON DELETE SET NULL
+            ');
+        }
+    } catch (PDOException) {
+        // FK opcional en instalaciones antiguas.
+    }
 }
 
 function migrateUsuarios(PDO $pdo): void
 {
-    $tablas = ['tipos_pago', 'pagos_fijos', 'cuentas'];
+    $tablas = ['tipos_pago', 'personas', 'pagos_fijos', 'cuentas'];
     foreach ($tablas as $tabla) {
+        $exists = $pdo->query("SHOW TABLES LIKE '{$tabla}'")->fetch();
+        if (!$exists) {
+            continue;
+        }
         $col = $pdo->query("SHOW COLUMNS FROM {$tabla} LIKE 'usuario_id'")->fetch();
         if (!$col) {
             $pdo->exec("ALTER TABLE {$tabla} ADD COLUMN usuario_id INT NULL AFTER id");

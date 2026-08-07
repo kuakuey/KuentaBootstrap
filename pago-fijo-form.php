@@ -9,20 +9,28 @@ $id = isset($_GET['id']) ? (int) $_GET['id'] : null;
 
 $pago = $id ? getPagoFijo($id) : null;
 $tiposPago = getTiposPago();
+$personas = getPersonas();
 $errors = [];
 $desdeCalendario = !$id && isset($_GET['dia']);
+$personaFiltro = parsePersonaFiltro(isset($_GET['persona']) ? (int) $_GET['persona'] : null);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nombre = trim($_POST['nombre'] ?? '');
     $diaPago = (int) ($_POST['dia_pago'] ?? 0);
     $tipoMonto = ($_POST['tipo_monto'] ?? 'variable') === 'fijo' ? 'fijo' : 'variable';
     $monto = parseMonto($_POST['monto'] ?? '0');
+    $personaId = $_POST['persona_id'] !== '' ? (int) $_POST['persona_id'] : null;
     $tipoPagoId = $_POST['tipo_pago_id'] !== '' ? (int) $_POST['tipo_pago_id'] : null;
     $notas = trim($_POST['notas'] ?? '');
     $activo = isset($_POST['activo']) ? 1 : 0;
     $generarFuturos = isset($_POST['generar_futuros']);
     $mesCalendario = (int) ($_POST['mes_calendario'] ?? date('n'));
     $anioCalendario = (int) ($_POST['anio_calendario'] ?? date('Y'));
+    $personaFiltro = parsePersonaFiltro(isset($_POST['persona_filtro']) ? (int) $_POST['persona_filtro'] : null);
+
+    if ($personaId && !getPersona($personaId)) {
+        $personaId = null;
+    }
 
     if ($nombre === '') {
         $errors[] = 'El nombre es obligatorio.';
@@ -43,22 +51,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id) {
             $stmt = $db->prepare('
                 UPDATE pagos_fijos
-                SET nombre = ?, dia_pago = ?, tipo_monto = ?, monto = ?, tipo_pago_id = ?, notas = ?, activo = ?
+                SET nombre = ?, dia_pago = ?, tipo_monto = ?, monto = ?, persona_id = ?, tipo_pago_id = ?, notas = ?, activo = ?
                 WHERE id = ? AND usuario_id = ?
             ');
-            $stmt->execute([$nombre, $diaPago, $tipoMonto, $monto, $tipoPagoId, $notas, $activo, $id, getUsuarioId()]);
+            $stmt->execute([$nombre, $diaPago, $tipoMonto, $monto, $personaId, $tipoPagoId, $notas, $activo, $id, getUsuarioId()]);
 
             if ($tipoMonto === 'fijo') {
                 propagarMontoFijo($id, $monto);
             }
+            propagarPersonaPagoFijo($id, $personaId);
 
             flash('success', 'Fecha de pago actualizada.');
         } else {
             $stmt = $db->prepare('
-                INSERT INTO pagos_fijos (usuario_id, nombre, dia_pago, tipo_monto, monto, tipo_pago_id, notas, activo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO pagos_fijos (usuario_id, nombre, dia_pago, tipo_monto, monto, persona_id, tipo_pago_id, notas, activo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ');
-            $stmt->execute([getUsuarioId(), $nombre, $diaPago, $tipoMonto, $monto, $tipoPagoId, $notas, $activo]);
+            $stmt->execute([getUsuarioId(), $nombre, $diaPago, $tipoMonto, $monto, $personaId, $tipoPagoId, $notas, $activo]);
 
             if ($generarFuturos) {
                 $creados = syncPagosFijosDesde($mesCalendario, $anioCalendario);
@@ -68,7 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        redirect(urlMes('calendario.php', $mesCalendario, $anioCalendario));
+        $redirExtra = $personaFiltro ? ['persona' => $personaFiltro] : [];
+        redirect(urlMes('calendario.php', $mesCalendario, $anioCalendario, $redirExtra));
     }
 
     $pago = [
@@ -76,6 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'dia_pago' => $diaPago,
         'tipo_monto' => $tipoMonto,
         'monto' => $monto,
+        'persona_id' => $personaId,
         'tipo_pago_id' => $tipoPagoId,
         'notas' => $notas,
         'activo' => $activo,
@@ -92,6 +103,7 @@ $defaults = [
     'dia_pago' => $diaPreseleccionado ?? 5,
     'tipo_monto' => 'variable',
     'monto' => 0,
+    'persona_id' => $personaFiltro ?? '',
     'tipo_pago_id' => $tiposPago[0]['id'] ?? '',
     'notas' => '',
     'activo' => 1,
@@ -105,7 +117,8 @@ if ($tipoMontoActual === 'fijo') {
 }
 
 $pageTitle = $id ? 'Editar fecha de pago' : 'Agregar en el calendario';
-$volverUrl = urlMes('calendario.php', $mesCalendario, $anioCalendario);
+$volverExtra = $personaFiltro ? ['persona' => $personaFiltro] : [];
+$volverUrl = urlMes('calendario.php', $mesCalendario, $anioCalendario, $volverExtra);
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -144,10 +157,32 @@ require __DIR__ . '/includes/header.php';
         <form method="post">
             <input type="hidden" name="mes_calendario" value="<?= $mesCalendario ?>">
             <input type="hidden" name="anio_calendario" value="<?= $anioCalendario ?>">
+            <?php if ($personaFiltro): ?>
+                <input type="hidden" name="persona_filtro" value="<?= $personaFiltro ?>">
+            <?php endif; ?>
 
             <div class="mb-3">
                 <label for="nombre" class="form-label">Nombre *</label>
                 <input type="text" class="form-control" id="nombre" name="nombre" value="<?= h($data['nombre']) ?>" placeholder="Ej: Tarjeta Pacífico, Supermaxi, Internet..." required autofocus>
+            </div>
+
+            <div class="mb-3">
+                <label for="persona_id" class="form-label">Persona / cuenta</label>
+                <select class="form-select" id="persona_id" name="persona_id">
+                    <option value="">— Sin asignar (aparece en Todos) —</option>
+                    <?php foreach ($personas as $persona): ?>
+                        <option value="<?= (int) $persona['id'] ?>" <?= (string) $data['persona_id'] === (string) $persona['id'] ? 'selected' : '' ?>>
+                            <?= h($persona['nombre']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text">
+                    <?php if (empty($personas)): ?>
+                        Aún no hay personas. <a href="personas.php">Créalas aquí</a> (ej. Cristhian, Jessy).
+                    <?php else: ?>
+                        Sirve para filtrar el calendario por Cristhian, Jessy, etc.
+                    <?php endif; ?>
+                </div>
             </div>
 
             <div class="mb-3">

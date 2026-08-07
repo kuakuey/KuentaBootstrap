@@ -6,10 +6,14 @@ require_once __DIR__ . '/includes/functions.php';
     isset($_GET['anio']) ? (int) $_GET['anio'] : null
 );
 
+$personaId = parsePersonaFiltro(isset($_GET['persona']) ? (int) $_GET['persona'] : null);
+$personas = getPersonas(true);
+$filtroExtra = $personaId ? ['persona' => $personaId] : [];
+
 ensureMesListo($mes, $anio);
 
-$cuentasPorDia = getCuentasCalendario($mes, $anio);
-$paraPagar = getCuentasParaPagar($mes, $anio);
+$cuentasPorDia = getCuentasCalendario($mes, $anio, $personaId);
+$paraPagar = getCuentasParaPagar($mes, $anio, $personaId);
 
 $firstDay = mktime(0, 0, 0, $mes, 1, $anio);
 $daysInMonth = (int) date('t', $firstDay);
@@ -22,13 +26,36 @@ $pageTitle = 'Calendario';
 require __DIR__ . '/includes/header.php';
 ?>
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
     <h1 class="h3 mb-0"><?= monthName($mes) ?> <?= $anio ?></h1>
     <div class="btn-group">
-        <a href="<?= urlMes('calendario.php', $mes - 1, $anio) ?>" class="btn btn-outline-secondary">&larr;</a>
-        <a href="<?= urlMes('calendario.php', (int) date('n'), (int) date('Y')) ?>" class="btn btn-outline-secondary">Hoy</a>
-        <a href="<?= urlMes('calendario.php', $mes + 1, $anio) ?>" class="btn btn-outline-secondary">&rarr;</a>
+        <a href="<?= urlMes('calendario.php', $mes - 1, $anio, $filtroExtra) ?>" class="btn btn-outline-secondary">&larr;</a>
+        <a href="<?= urlMes('calendario.php', (int) date('n'), (int) date('Y'), $filtroExtra) ?>" class="btn btn-outline-secondary">Hoy</a>
+        <a href="<?= urlMes('calendario.php', $mes + 1, $anio, $filtroExtra) ?>" class="btn btn-outline-secondary">&rarr;</a>
     </div>
+</div>
+
+<div class="persona-filter mb-4">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="text-muted small me-1">Ver cuentas de:</span>
+        <a href="<?= urlMes('calendario.php', $mes, $anio) ?>"
+           class="persona-chip <?= $personaId === null ? 'active' : '' ?>">
+            Todos
+        </a>
+        <?php foreach ($personas as $persona): ?>
+            <a href="<?= urlMes('calendario.php', $mes, $anio, ['persona' => (int) $persona['id']]) ?>"
+               class="persona-chip <?= $personaId === (int) $persona['id'] ? 'active' : '' ?>"
+               style="--persona-color: <?= h($persona['color']) ?>">
+                <?= h($persona['nombre']) ?>
+            </a>
+        <?php endforeach; ?>
+        <a href="personas.php" class="btn btn-sm btn-outline-secondary ms-auto">Administrar personas</a>
+    </div>
+    <?php if (empty($personas)): ?>
+        <p class="text-muted small mt-2 mb-0">
+            Aún no hay personas. <a href="personas.php">Agrega Cristhian, Jessy u otras</a> para filtrar el calendario.
+        </p>
+    <?php endif; ?>
 </div>
 
 <div class="row g-4">
@@ -61,10 +88,14 @@ require __DIR__ . '/includes/header.php';
                             }
                             if ($v === 'paid' && $dayVisual === 'normal') { $dayVisual = 'paid'; }
                         }
+                        $addParams = 'dia=' . $day . '&mes=' . $mes . '&anio=' . $anio;
+                        if ($personaId) {
+                            $addParams .= '&persona=' . $personaId;
+                        }
                     ?>
                         <div class="calendar-day <?= $isToday ? 'today' : '' ?> day-<?= $dayVisual ?>">
                             <div class="calendar-day-header">
-                                <a href="pago-fijo-form.php?dia=<?= $day ?>&mes=<?= $mes ?>&anio=<?= $anio ?>"
+                                <a href="pago-fijo-form.php?<?= $addParams ?>"
                                    class="day-number"
                                    title="Agregar cuenta el día <?= $day ?>">
                                     <?= $day ?>
@@ -77,14 +108,17 @@ require __DIR__ . '/includes/header.php';
                                     $link = !cuentaValorAsignado($cuenta) || ($visual === 'pending' || $visual === 'overdue')
                                         ? 'asignar-valor.php?id=' . (int) $cuenta['id'] . '&mes=' . $mes . '&anio=' . $anio
                                         : 'cuenta-form.php?id=' . (int) $cuenta['id'] . '&mes=' . $mes . '&anio=' . $anio;
+                                    if ($personaId) {
+                                        $link .= '&persona=' . $personaId;
+                                    }
                                 ?>
                                     <a href="<?= $link ?>"
                                        class="calendar-event event-<?= $visual ?>"
-                                       title="<?= h($cuenta['nombre']) ?>">
+                                       title="<?= h($cuenta['nombre']) ?><?= !empty($cuenta['persona_nombre']) ? ' · ' . h($cuenta['persona_nombre']) : '' ?>">
                                         <span class="event-name"><?= h($cuenta['nombre']) ?></span>
                                     </a>
                                 <?php endforeach; ?>
-                                <a href="pago-fijo-form.php?dia=<?= $day ?>&mes=<?= $mes ?>&anio=<?= $anio ?>"
+                                <a href="pago-fijo-form.php?<?= $addParams ?>"
                                    class="calendar-add-event"
                                    title="Agregar cuenta este día">+</a>
                             </div>
@@ -100,12 +134,12 @@ require __DIR__ . '/includes/header.php';
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h2 class="h6 mb-0">Por pagar</h2>
                 <?php if (!empty($paraPagar)): ?>
-                    <a href="<?= urlMes('cuentas.php', $mes, $anio, ['filtro' => 'pendientes']) ?>" class="small">Ver lista</a>
+                    <a href="<?= urlMes('cuentas.php', $mes, $anio, array_merge(['filtro' => 'pendientes'], $filtroExtra)) ?>" class="small">Ver lista</a>
                 <?php endif; ?>
             </div>
             <div class="card-body">
                 <?php if (empty($paraPagar)): ?>
-                    <p class="text-muted small mb-0">Nada pendiente este mes.</p>
+                    <p class="text-muted small mb-0">Nada pendiente<?= $personaId ? ' para esta persona' : '' ?> este mes.</p>
                 <?php else: ?>
                     <ul class="sidebar-payments">
                         <?php foreach ($paraPagar as $cuenta): ?>
@@ -115,12 +149,15 @@ require __DIR__ . '/includes/header.php';
                                     <span class="text-muted d-block small">
                                         Día <?= (int) date('j', strtotime($cuenta['fecha_vencimiento'])) ?>
                                         · <?= formatMoney((float) $cuenta['monto']) ?>
+                                        <?php if (!empty($cuenta['persona_nombre']) && $personaId === null): ?>
+                                            · <?= h($cuenta['persona_nombre']) ?>
+                                        <?php endif; ?>
                                     </span>
                                 </a>
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                    <a href="<?= urlMes('cuentas.php', $mes, $anio, ['filtro' => 'pendientes']) ?>" class="btn btn-primary w-100">Ir a la lista</a>
+                    <a href="<?= urlMes('cuentas.php', $mes, $anio, array_merge(['filtro' => 'pendientes'], $filtroExtra)) ?>" class="btn btn-primary w-100">Ir a la lista</a>
                 <?php endif; ?>
             </div>
         </div>

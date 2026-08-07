@@ -81,7 +81,7 @@ function getInstallStatus(): array
     try {
         $pdo = getDatabasePDO();
         $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
-        $required = ['usuarios', 'tipos_pago', 'pagos_fijos', 'cuentas'];
+        $required = ['usuarios', 'tipos_pago', 'personas', 'pagos_fijos', 'cuentas'];
         $missing = array_diff($required, $tables);
 
         if (empty($missing)) {

@@ -46,6 +46,35 @@ body {
 .color-hint.green { color: #198754; font-weight: 600; }
 .color-hint.red { color: #dc3545; font-weight: 600; }
 
+.persona-filter {
+    background: #fff;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.04);
+}
+
+.persona-chip {
+    --persona-color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    border: 1px solid color-mix(in srgb, var(--persona-color) 45%, #cbd5e1);
+    background: color-mix(in srgb, var(--persona-color) 12%, white);
+    color: #0f172a;
+    border-radius: 999px;
+    padding: 0.3rem 0.85rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.persona-chip:hover,
+.persona-chip.active {
+    background: var(--persona-color);
+    border-color: var(--persona-color);
+    color: #fff;
+}
+
 /* Calendario */
 .calendar-card,
 .calendar-card-body,

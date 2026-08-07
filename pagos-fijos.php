@@ -156,6 +156,7 @@ require __DIR__ . '/includes/header.php';
                         <tr>
                             <th>Día</th>
                             <th>Cuenta</th>
+                            <th>Persona</th>
                             <th>Valor</th>
                             <th>Tipo habitual</th>
                             <th>Estado</th>
@@ -170,6 +171,15 @@ require __DIR__ . '/includes/header.php';
                                     <strong><?= h($pago['nombre']) ?></strong>
                                     <?php if ($pago['notas']): ?>
                                         <div class="text-muted small"><?= h($pago['notas']) ?></div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($pago['persona_nombre'])): ?>
+                                        <span class="badge badge-tipo" style="--badge-color: <?= h($pago['persona_color'] ?? '#0d6efd') ?>">
+                                            <?= h($pago['persona_nombre']) ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-muted">Todos</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>

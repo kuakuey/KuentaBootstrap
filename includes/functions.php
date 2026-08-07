@@ -249,18 +249,58 @@ function eliminarTodasSeriesHuerfanas(): int
     return $total;
 }
 
-function getCuentasParaPagar(int $mes, int $anio): array
+function getPersonas(bool $soloActivos = true): array
 {
-    $stmt = getDB()->prepare("
-        SELECT c.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color
+    $sql = 'SELECT * FROM personas WHERE usuario_id = ?';
+    if ($soloActivos) {
+        $sql .= ' AND activo = 1';
+    }
+    $sql .= ' ORDER BY nombre ASC';
+    $stmt = getDB()->prepare($sql);
+    $stmt->execute([getUsuarioId()]);
+    return $stmt->fetchAll();
+}
+
+function getPersona(int $id): ?array
+{
+    $stmt = getDB()->prepare('SELECT * FROM personas WHERE id = ? AND usuario_id = ?');
+    $stmt->execute([$id, getUsuarioId()]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+function parsePersonaFiltro(?int $personaId): ?int
+{
+    if ($personaId === null || $personaId <= 0) {
+        return null;
+    }
+    return getPersona($personaId) ? $personaId : null;
+}
+
+function sqlFiltroPersona(string $alias, ?int $personaId): string
+{
+    if ($personaId === null) {
+        return '';
+    }
+    return " AND {$alias}.persona_id = " . (int) $personaId;
+}
+
+function getCuentasParaPagar(int $mes, int $anio, ?int $personaId = null): array
+{
+    $sql = "
+        SELECT c.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color,
+               pe.nombre AS persona_nombre, pe.color AS persona_color
         FROM cuentas c
         LEFT JOIN tipos_pago t ON c.tipo_pago_id = t.id
+        LEFT JOIN personas pe ON c.persona_id = pe.id
         WHERE c.usuario_id = ? AND c.mes = ? AND c.anio = ?
           AND c.estado = 'pendiente'
           AND c.valor_asignado = 1
           AND c.monto > 0
-        ORDER BY c.fecha_vencimiento ASC, c.nombre ASC
-    ");
+    ";
+    $sql .= sqlFiltroPersona('c', $personaId);
+    $sql .= ' ORDER BY c.fecha_vencimiento ASC, c.nombre ASC';
+    $stmt = getDB()->prepare($sql);
     $stmt->execute([getUsuarioId(), $mes, $anio]);
     return $stmt->fetchAll();
 }
@@ -347,15 +387,19 @@ function getTipoPago(int $id): ?array
     return $row ?: null;
 }
 
-function getCuentasMes(int $mes, int $anio): array
+function getCuentasMes(int $mes, int $anio, ?int $personaId = null): array
 {
-    $stmt = getDB()->prepare("
-        SELECT c.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color
+    $sql = "
+        SELECT c.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color,
+               pe.nombre AS persona_nombre, pe.color AS persona_color
         FROM cuentas c
         LEFT JOIN tipos_pago t ON c.tipo_pago_id = t.id
+        LEFT JOIN personas pe ON c.persona_id = pe.id
         WHERE c.usuario_id = ? AND c.mes = ? AND c.anio = ?
-        ORDER BY c.fecha_vencimiento ASC, c.nombre ASC
-    ");
+    ";
+    $sql .= sqlFiltroPersona('c', $personaId);
+    $sql .= ' ORDER BY c.fecha_vencimiento ASC, c.nombre ASC';
+    $stmt = getDB()->prepare($sql);
     $stmt->execute([getUsuarioId(), $mes, $anio]);
     return $stmt->fetchAll();
 }
@@ -363,9 +407,11 @@ function getCuentasMes(int $mes, int $anio): array
 function getCuenta(int $id): ?array
 {
     $stmt = getDB()->prepare("
-        SELECT c.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color
+        SELECT c.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color,
+               pe.nombre AS persona_nombre, pe.color AS persona_color
         FROM cuentas c
         LEFT JOIN tipos_pago t ON c.tipo_pago_id = t.id
+        LEFT JOIN personas pe ON c.persona_id = pe.id
         WHERE c.id = ? AND c.usuario_id = ?
     ");
     $stmt->execute([$id, getUsuarioId()]);
@@ -373,15 +419,19 @@ function getCuenta(int $id): ?array
     return $row ?: null;
 }
 
-function getCuentasCalendario(int $mes, int $anio): array
+function getCuentasCalendario(int $mes, int $anio, ?int $personaId = null): array
 {
-    $stmt = getDB()->prepare("
-        SELECT c.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color
+    $sql = "
+        SELECT c.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color,
+               pe.nombre AS persona_nombre, pe.color AS persona_color
         FROM cuentas c
         LEFT JOIN tipos_pago t ON c.tipo_pago_id = t.id
+        LEFT JOIN personas pe ON c.persona_id = pe.id
         WHERE c.usuario_id = ? AND c.mes = ? AND c.anio = ?
-        ORDER BY c.fecha_vencimiento ASC
-    ");
+    ";
+    $sql .= sqlFiltroPersona('c', $personaId);
+    $sql .= ' ORDER BY c.fecha_vencimiento ASC';
+    $stmt = getDB()->prepare($sql);
     $stmt->execute([getUsuarioId(), $mes, $anio]);
     $grouped = [];
     foreach ($stmt->fetchAll() as $cuenta) {
@@ -446,9 +496,11 @@ function fechaVencimientoFija(int $diaPago, int $mes, int $anio): string
 function getPagosFijos(bool $soloActivos = true): array
 {
     $sql = "
-        SELECT p.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color
+        SELECT p.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color,
+               pe.nombre AS persona_nombre, pe.color AS persona_color
         FROM pagos_fijos p
         LEFT JOIN tipos_pago t ON p.tipo_pago_id = t.id
+        LEFT JOIN personas pe ON p.persona_id = pe.id
         WHERE p.usuario_id = ?
     ";
     if ($soloActivos) {
@@ -463,9 +515,11 @@ function getPagosFijos(bool $soloActivos = true): array
 function getPagoFijo(int $id): ?array
 {
     $stmt = getDB()->prepare("
-        SELECT p.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color
+        SELECT p.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color,
+               pe.nombre AS persona_nombre, pe.color AS persona_color
         FROM pagos_fijos p
         LEFT JOIN tipos_pago t ON p.tipo_pago_id = t.id
+        LEFT JOIN personas pe ON p.persona_id = pe.id
         WHERE p.id = ? AND p.usuario_id = ?
     ");
     $stmt->execute([$id, getUsuarioId()]);
@@ -492,9 +546,9 @@ function syncPagosFijosMes(int $mes, int $anio): int
 
     $insert = $db->prepare("
         INSERT INTO cuentas (
-            usuario_id, nombre, monto, fecha_vencimiento, tipo_pago_id, pago_fijo_id,
+            usuario_id, nombre, monto, fecha_vencimiento, persona_id, tipo_pago_id, pago_fijo_id,
             valor_asignado, estado, fecha_pago, notas, mes, anio
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     $fillFijo = $db->prepare("
@@ -526,6 +580,7 @@ function syncPagosFijosMes(int $mes, int $anio): int
             $pago['nombre'],
             $monto,
             $fecha,
+            $pago['persona_id'] ?: null,
             $pago['tipo_pago_id'],
             $pago['id'],
             $valorAsignado,
@@ -558,6 +613,16 @@ function propagarMontoFijo(int $pagoFijoId, float $monto): void
           AND estado = 'pendiente'
     ");
     $stmt->execute([$monto, $estado, $fechaPago, getUsuarioId(), $pagoFijoId]);
+}
+
+function propagarPersonaPagoFijo(int $pagoFijoId, ?int $personaId): void
+{
+    $stmt = getDB()->prepare('
+        UPDATE cuentas
+        SET persona_id = ?
+        WHERE usuario_id = ? AND pago_fijo_id = ?
+    ');
+    $stmt->execute([$personaId, getUsuarioId(), $pagoFijoId]);
 }
 
 function ensureMesListo(int $mes, int $anio): void

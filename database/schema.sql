@@ -26,6 +26,18 @@ CREATE TABLE IF NOT EXISTS tipos_pago (
         FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS personas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    color VARCHAR(7) NOT NULL DEFAULT '#0d6efd',
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_personas_usuario_nombre (usuario_id, nombre),
+    CONSTRAINT fk_personas_usuario
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS pagos_fijos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     usuario_id INT NOT NULL,
@@ -33,12 +45,15 @@ CREATE TABLE IF NOT EXISTS pagos_fijos (
     dia_pago TINYINT NOT NULL,
     tipo_monto ENUM('variable', 'fijo') NOT NULL DEFAULT 'variable',
     monto DECIMAL(12,2) NOT NULL DEFAULT 0,
+    persona_id INT NULL,
     tipo_pago_id INT NULL,
     notas TEXT NULL,
     activo TINYINT(1) NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_pagos_fijos_usuario
         FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pagos_fijos_persona
+        FOREIGN KEY (persona_id) REFERENCES personas(id) ON DELETE SET NULL,
     CONSTRAINT fk_pagos_fijos_tipo_pago
         FOREIGN KEY (tipo_pago_id) REFERENCES tipos_pago(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -49,6 +64,7 @@ CREATE TABLE IF NOT EXISTS cuentas (
     nombre VARCHAR(200) NOT NULL,
     monto DECIMAL(12,2) NOT NULL DEFAULT 0,
     fecha_vencimiento DATE NOT NULL,
+    persona_id INT NULL,
     tipo_pago_id INT NULL,
     pago_fijo_id INT NULL,
     valor_asignado TINYINT(1) NOT NULL DEFAULT 0,
@@ -60,6 +76,8 @@ CREATE TABLE IF NOT EXISTS cuentas (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_cuentas_usuario
         FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    CONSTRAINT fk_cuentas_persona
+        FOREIGN KEY (persona_id) REFERENCES personas(id) ON DELETE SET NULL,
     CONSTRAINT fk_cuentas_tipo_pago
         FOREIGN KEY (tipo_pago_id) REFERENCES tipos_pago(id) ON DELETE SET NULL,
     CONSTRAINT fk_cuentas_pago_fijo
