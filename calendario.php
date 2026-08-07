@@ -51,7 +51,6 @@ require __DIR__ . '/includes/header.php';
                     <?php for ($day = 1; $day <= $daysInMonth; $day++):
                         $isToday = ($day === $today && $mes === $currentMonth && $anio === $currentYear);
                         $dayCuentas = $cuentasPorDia[$day] ?? [];
-                        $totalDia = array_sum(array_map(fn($c) => cuentaTieneValor($c) ? (float) $c['monto'] : 0, $dayCuentas));
                         $dayVisual = 'normal';
                         foreach ($dayCuentas as $c) {
                             $v = cuentaEstadoVisual($c);
@@ -70,9 +69,6 @@ require __DIR__ . '/includes/header.php';
                                    title="Agregar cuenta el día <?= $day ?>">
                                     <?= $day ?>
                                 </a>
-                                <?php if ($totalDia > 0): ?>
-                                    <span class="day-total"><?= formatMoneyShort($totalDia) ?></span>
-                                <?php endif; ?>
                             </div>
 
                             <div class="calendar-events calendar-events-desktop">
@@ -84,9 +80,8 @@ require __DIR__ . '/includes/header.php';
                                 ?>
                                     <a href="<?= $link ?>"
                                        class="calendar-event event-<?= $visual ?>"
-                                       title="<?= h($cuenta['nombre']) ?> — <?= formatMoneyOrPending($cuenta) ?>">
+                                       title="<?= h($cuenta['nombre']) ?>">
                                         <span class="event-name"><?= h($cuenta['nombre']) ?></span>
-                                        <span class="event-amount"><?= formatMoneyOrPending($cuenta) ?></span>
                                     </a>
                                 <?php endforeach; ?>
                                 <a href="pago-fijo-form.php?dia=<?= $day ?>&mes=<?= $mes ?>&anio=<?= $anio ?>"
