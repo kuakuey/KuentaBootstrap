@@ -37,9 +37,10 @@ require __DIR__ . '/includes/header.php';
 
 <div class="persona-filter mb-4">
     <div class="d-flex flex-wrap align-items-center gap-2">
-        <span class="text-muted small me-1">Ver cuentas de:</span>
+        <span class="text-muted small me-1">Filtrar:</span>
         <a href="<?= urlMes('calendario.php', $mes, $anio) ?>"
-           class="persona-chip <?= $personaId === null ? 'active' : '' ?>">
+           class="persona-chip <?= $personaId === null ? 'active' : '' ?>"
+           title="Calendario completo, sin filtros">
             Todos
         </a>
         <?php foreach ($personas as $persona): ?>

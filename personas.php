@@ -60,7 +60,7 @@ require __DIR__ . '/includes/header.php';
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
     <div>
         <h1 class="h3 mb-1">Personas / cuentas</h1>
-        <p class="text-muted mb-0">Separa pagos por persona (ej. Cristhian, Jessy). En el calendario usa el filtro Todos.</p>
+        <p class="text-muted mb-0">Separa pagos por persona (ej. Cristhian, Jessy). En el calendario, <strong>Todos</strong> muestra todo sin filtros.</p>
     </div>
     <a href="calendario.php" class="btn btn-outline-secondary">&larr; Calendario</a>
 </div>

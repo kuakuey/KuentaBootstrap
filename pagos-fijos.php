@@ -179,7 +179,7 @@ require __DIR__ . '/includes/header.php';
                                             <?= h($pago['persona_nombre']) ?>
                                         </span>
                                     <?php else: ?>
-                                        <span class="text-muted">Todos</span>
+                                        <span class="text-muted">—</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
