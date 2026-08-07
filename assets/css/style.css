@@ -47,10 +47,21 @@ body {
 .color-hint.red { color: #dc3545; font-weight: 600; }
 
 /* Calendario */
+.calendar-card,
+.calendar-card-body,
+.min-w-0 {
+    min-width: 0;
+}
+
+.calendar-card {
+    overflow: hidden;
+}
+
 .calendar-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 0.5rem;
+    width: 100%;
 }
 
 .calendar-weekday {
@@ -59,16 +70,45 @@ body {
     font-weight: 700;
     color: var(--bs-secondary-color);
     padding: 0.35rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .calendar-day {
     min-height: 110px;
+    min-width: 0;
     border: 1px solid var(--bs-border-color);
     border-radius: 0.5rem;
     padding: 0.45rem;
     background: #fff;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+}
+
+.btn-day-info {
+    display: none;
+    width: 1.35rem;
+    height: 1.35rem;
+    padding: 0;
+    border: 1px solid var(--bs-primary);
+    border-radius: 50%;
+    background: #fff;
+    color: var(--bs-primary);
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-style: italic;
+    line-height: 1;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.btn-day-info:hover,
+.btn-day-info:focus-visible {
+    background: var(--bs-primary);
+    color: #fff;
 }
 
 .calendar-day.empty {
@@ -214,54 +254,60 @@ body {
 }
 
 @media (max-width: 768px) {
+    .calendar-card-body {
+        padding: 0.5rem;
+    }
+
     .calendar-grid {
-        gap: 0.25rem;
+        gap: 0.2rem;
+    }
+
+    .calendar-weekday {
+        font-size: 0.65rem;
+        padding: 0.15rem 0;
     }
 
     .calendar-day {
-        min-height: 64px;
-        padding: 0.25rem;
+        min-height: 52px;
+        padding: 0.2rem;
+        align-items: center;
+    }
+
+    .calendar-day-header {
+        width: 100%;
+        margin-bottom: 0;
+        justify-content: center;
+        gap: 0.15rem;
+        flex-wrap: wrap;
+    }
+
+    .day-number {
+        min-width: 1.35rem;
+        height: 1.35rem;
+        font-size: 0.8rem;
     }
 
     .day-total,
-    .calendar-event .event-name,
-    .calendar-event .event-amount {
-        display: none;
+    .calendar-events-desktop {
+        display: none !important;
     }
 
-    .calendar-events {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 0.2rem;
-        align-items: center;
-    }
-
-    .calendar-event {
-        width: 8px;
-        height: 8px;
-        padding: 0;
-        border: none;
-        border-radius: 50%;
-        font-size: 0;
-        line-height: 0;
-        overflow: hidden;
-    }
-
-    .calendar-event.event-unassigned { background: #94a3b8; }
-    .calendar-event.event-pending { background: #f59e0b; }
-    .calendar-event.event-overdue { background: #dc2626; }
-    .calendar-event.event-paid { background: #16a34a; }
-
-    .calendar-add-event {
-        width: 14px;
-        height: 14px;
-        padding: 0;
-        margin-top: 0;
+    .btn-day-info {
         display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        line-height: 1;
-        border-style: solid;
+    }
+
+    .calendar-day.day-unassigned .btn-day-info {
+        border-color: #94a3b8;
+        color: #64748b;
+    }
+
+    .calendar-day.day-pending .btn-day-info {
+        border-color: #f59e0b;
+        color: #b45309;
+    }
+
+    .calendar-day.day-overdue .btn-day-info {
+        border-color: #dc2626;
+        color: #dc2626;
     }
 }

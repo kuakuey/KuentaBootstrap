@@ -1,4 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const dayInfoModal = document.getElementById('dayInfoModal');
+    if (dayInfoModal) {
+        const modalTitle = document.getElementById('dayInfoModalLabel');
+        const modalBody = document.getElementById('dayInfoModalBody');
+
+        dayInfoModal.addEventListener('show.bs.modal', (event) => {
+            const button = event.relatedTarget;
+            if (!button || !modalBody) return;
+
+            const title = button.getAttribute('data-day-title') || 'Detalle del día';
+            const sourceSelector = button.getAttribute('data-day-source');
+            const source = sourceSelector ? document.querySelector(sourceSelector) : null;
+
+            if (modalTitle) {
+                modalTitle.textContent = title;
+            }
+            modalBody.innerHTML = source ? source.innerHTML : '<p class="text-muted mb-0">Sin información.</p>';
+        });
+    }
+
     const estadoSelect = document.getElementById('estado');
     const fechaPagoGroup = document.getElementById('fecha-pago-group');
 

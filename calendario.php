@@ -18,6 +18,13 @@ $today = (int) date('j');
 $currentMonth = (int) date('n');
 $currentYear = (int) date('Y');
 
+$estadoLabel = [
+    'unassigned' => 'Sin valor',
+    'pending' => 'Pendiente',
+    'overdue' => 'Vencida',
+    'paid' => 'Pagada',
+];
+
 $pageTitle = 'Calendario';
 require __DIR__ . '/includes/header.php';
 ?>
@@ -32,9 +39,9 @@ require __DIR__ . '/includes/header.php';
 </div>
 
 <div class="row g-4">
-    <div class="col-lg-9">
-        <div class="card shadow-sm">
-            <div class="card-body">
+    <div class="col-lg-9 min-w-0">
+        <div class="card shadow-sm calendar-card">
+            <div class="card-body calendar-card-body">
                 <div class="calendar-grid">
                     <div class="calendar-weekday">Lun</div>
                     <div class="calendar-weekday">Mar</div>
@@ -59,6 +66,7 @@ require __DIR__ . '/includes/header.php';
                             if ($v === 'pending' && $dayVisual !== 'overdue') { $dayVisual = 'pending'; }
                             if ($v === 'unassigned' && $dayVisual === 'normal') { $dayVisual = 'unassigned'; }
                         }
+                        $dayModalId = 'day-detail-' . $day;
                     ?>
                         <div class="calendar-day <?= $isToday ? 'today' : '' ?> day-<?= $dayVisual ?>">
                             <div class="calendar-day-header">
@@ -70,8 +78,20 @@ require __DIR__ . '/includes/header.php';
                                 <?php if ($totalDia > 0): ?>
                                     <span class="day-total"><?= formatMoneyShort($totalDia) ?></span>
                                 <?php endif; ?>
+                                <?php if (!empty($dayCuentas)): ?>
+                                    <button type="button"
+                                            class="btn-day-info"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#dayInfoModal"
+                                            data-day-title="Día <?= $day ?> · <?= monthName($mes) ?>"
+                                            data-day-source="#<?= $dayModalId ?>"
+                                            aria-label="Ver cuentas del día <?= $day ?>">
+                                        i
+                                    </button>
+                                <?php endif; ?>
                             </div>
-                            <div class="calendar-events">
+
+                            <div class="calendar-events calendar-events-desktop">
                                 <?php foreach ($dayCuentas as $cuenta):
                                     $visual = cuentaEstadoVisual($cuenta);
                                     $link = !cuentaValorAsignado($cuenta) || ($visual === 'pending' || $visual === 'overdue')
@@ -89,6 +109,39 @@ require __DIR__ . '/includes/header.php';
                                    class="calendar-add-event"
                                    title="Agregar cuenta este día">+</a>
                             </div>
+
+                            <?php if (!empty($dayCuentas)): ?>
+                                <div class="d-none" id="<?= $dayModalId ?>">
+                                    <ul class="list-group list-group-flush day-detail-list">
+                                        <?php foreach ($dayCuentas as $cuenta):
+                                            $visual = cuentaEstadoVisual($cuenta);
+                                            $link = !cuentaValorAsignado($cuenta) || ($visual === 'pending' || $visual === 'overdue')
+                                                ? 'asignar-valor.php?id=' . (int) $cuenta['id'] . '&mes=' . $mes . '&anio=' . $anio
+                                                : 'cuenta-form.php?id=' . (int) $cuenta['id'] . '&mes=' . $mes . '&anio=' . $anio;
+                                            $badgeClass = match ($visual) {
+                                                'paid' => 'text-bg-success',
+                                                'overdue' => 'text-bg-danger',
+                                                'pending' => 'text-bg-warning text-dark',
+                                                default => 'text-bg-secondary',
+                                            };
+                                        ?>
+                                            <li class="list-group-item px-0">
+                                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                                    <div>
+                                                        <strong><?= h($cuenta['nombre']) ?></strong>
+                                                        <div class="small text-muted"><?= formatMoneyOrPending($cuenta) ?></div>
+                                                    </div>
+                                                    <span class="badge <?= $badgeClass ?>"><?= h($estadoLabel[$visual] ?? $visual) ?></span>
+                                                </div>
+                                                <a href="<?= $link ?>" class="btn btn-sm btn-primary mt-2">Abrir</a>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                    <a href="pago-fijo-form.php?dia=<?= $day ?>&mes=<?= $mes ?>&anio=<?= $anio ?>" class="btn btn-outline-secondary w-100 mt-2">
+                                        + Agregar cuenta este día
+                                    </a>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     <?php endfor; ?>
                 </div>
@@ -126,6 +179,18 @@ require __DIR__ . '/includes/header.php';
             </div>
         </div>
     </aside>
+</div>
+
+<div class="modal fade" id="dayInfoModal" tabindex="-1" aria-labelledby="dayInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="dayInfoModalLabel">Detalle del día</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="dayInfoModalBody"></div>
+        </div>
+    </div>
 </div>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
