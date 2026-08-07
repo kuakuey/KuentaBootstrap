@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS pagos_fijos (
     usuario_id INT NOT NULL,
     nombre VARCHAR(200) NOT NULL,
     dia_pago TINYINT NOT NULL,
+    tipo_monto ENUM('variable', 'fijo') NOT NULL DEFAULT 'variable',
+    monto DECIMAL(12,2) NOT NULL DEFAULT 0,
     tipo_pago_id INT NULL,
     notas TEXT NULL,
     activo TINYINT(1) NOT NULL DEFAULT 1,

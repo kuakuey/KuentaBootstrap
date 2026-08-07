@@ -94,6 +94,8 @@ function initDatabase(PDO $pdo): void
             usuario_id INT NOT NULL,
             nombre VARCHAR(200) NOT NULL,
             dia_pago TINYINT NOT NULL,
+            tipo_monto ENUM('variable', 'fijo') NOT NULL DEFAULT 'variable',
+            monto DECIMAL(12,2) NOT NULL DEFAULT 0,
             tipo_pago_id INT NULL,
             notas TEXT NULL,
             activo TINYINT(1) NOT NULL DEFAULT 1,
@@ -160,13 +162,17 @@ function migrateCuentasColumns(PDO $pdo): void
 
 function migratePagosFijosColumns(PDO $pdo): void
 {
+    $tipoMonto = $pdo->query("SHOW COLUMNS FROM pagos_fijos LIKE 'tipo_monto'")->fetch();
+    if (!$tipoMonto) {
+        $pdo->exec("
+            ALTER TABLE pagos_fijos
+            ADD COLUMN tipo_monto ENUM('variable', 'fijo') NOT NULL DEFAULT 'variable' AFTER dia_pago
+        ");
+    }
+
     $monto = $pdo->query("SHOW COLUMNS FROM pagos_fijos LIKE 'monto'")->fetch();
-    if ($monto) {
-        try {
-            $pdo->exec('ALTER TABLE pagos_fijos DROP COLUMN monto');
-        } catch (PDOException) {
-            // Ignorar si no se puede eliminar en algunas instalaciones.
-        }
+    if (!$monto) {
+        $pdo->exec('ALTER TABLE pagos_fijos ADD COLUMN monto DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER tipo_monto');
     }
 }
 

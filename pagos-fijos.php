@@ -84,8 +84,8 @@ require __DIR__ . '/includes/header.php';
     <div class="card-body">
         <strong>Tu flujo</strong>
         <ol class="mb-0 mt-2">
-            <li>Registras aquí las <strong>fechas fijas</strong> (día de corte).</li>
-            <li>En el <strong>calendario</strong>, mes a mes, asignas el valor cuando toca.</li>
+            <li>Registras aquí las <strong>fechas</strong> (día de corte) y si el valor es <strong>fijo</strong> o <strong>variable</strong>.</li>
+            <li>Si es <strong>fijo</strong>, el valor se repite solo. Si es <strong>variable</strong>, lo asignas mes a mes en el calendario.</li>
             <li>En la <strong>Lista</strong>, seleccionas qué cuentas vas a pagar.</li>
             <li>En el calendario pasan a <span class="color-hint green">verde</span> (o <span class="color-hint red">rojo</span> si se vencieron).</li>
         </ol>
@@ -156,6 +156,7 @@ require __DIR__ . '/includes/header.php';
                         <tr>
                             <th>Día</th>
                             <th>Cuenta</th>
+                            <th>Valor</th>
                             <th>Tipo habitual</th>
                             <th>Estado</th>
                             <th>Acciones</th>
@@ -169,6 +170,14 @@ require __DIR__ . '/includes/header.php';
                                     <strong><?= h($pago['nombre']) ?></strong>
                                     <?php if ($pago['notas']): ?>
                                         <div class="text-muted small"><?= h($pago['notas']) ?></div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (pagoMontoEsFijo($pago)): ?>
+                                        <span class="badge text-bg-primary">Fijo</span>
+                                        <div class="small mt-1"><?= formatMoneyShort((float) $pago['monto']) ?></div>
+                                    <?php else: ?>
+                                        <span class="badge text-bg-secondary">Variable</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>

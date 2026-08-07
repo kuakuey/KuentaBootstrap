@@ -15,6 +15,8 @@ $desdeCalendario = !$id && isset($_GET['dia']);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nombre = trim($_POST['nombre'] ?? '');
     $diaPago = (int) ($_POST['dia_pago'] ?? 0);
+    $tipoMonto = ($_POST['tipo_monto'] ?? 'variable') === 'fijo' ? 'fijo' : 'variable';
+    $monto = parseMonto($_POST['monto'] ?? '0');
     $tipoPagoId = $_POST['tipo_pago_id'] !== '' ? (int) $_POST['tipo_pago_id'] : null;
     $notas = trim($_POST['notas'] ?? '');
     $activo = isset($_POST['activo']) ? 1 : 0;
@@ -28,6 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($diaPago < 1 || $diaPago > 31) {
         $errors[] = 'El día de corte debe estar entre 1 y 31.';
     }
+    if ($tipoMonto === 'fijo' && $monto < 0) {
+        $errors[] = 'El valor fijo no puede ser negativo.';
+    }
+    if ($tipoMonto === 'variable') {
+        $monto = 0.0;
+    }
 
     if (empty($errors)) {
         $db = getDB();
@@ -35,17 +43,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id) {
             $stmt = $db->prepare('
                 UPDATE pagos_fijos
-                SET nombre = ?, dia_pago = ?, tipo_pago_id = ?, notas = ?, activo = ?
+                SET nombre = ?, dia_pago = ?, tipo_monto = ?, monto = ?, tipo_pago_id = ?, notas = ?, activo = ?
                 WHERE id = ? AND usuario_id = ?
             ');
-            $stmt->execute([$nombre, $diaPago, $tipoPagoId, $notas, $activo, $id, getUsuarioId()]);
+            $stmt->execute([$nombre, $diaPago, $tipoMonto, $monto, $tipoPagoId, $notas, $activo, $id, getUsuarioId()]);
+
+            if ($tipoMonto === 'fijo') {
+                propagarMontoFijo($id, $monto);
+            }
+
             flash('success', 'Fecha de pago actualizada.');
         } else {
             $stmt = $db->prepare('
-                INSERT INTO pagos_fijos (usuario_id, nombre, dia_pago, tipo_pago_id, notas, activo)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO pagos_fijos (usuario_id, nombre, dia_pago, tipo_monto, monto, tipo_pago_id, notas, activo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ');
-            $stmt->execute([getUsuarioId(), $nombre, $diaPago, $tipoPagoId, $notas, $activo]);
+            $stmt->execute([getUsuarioId(), $nombre, $diaPago, $tipoMonto, $monto, $tipoPagoId, $notas, $activo]);
 
             if ($generarFuturos) {
                 $creados = syncPagosFijosDesde($mesCalendario, $anioCalendario);
@@ -61,6 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pago = [
         'nombre' => $nombre,
         'dia_pago' => $diaPago,
+        'tipo_monto' => $tipoMonto,
+        'monto' => $monto,
         'tipo_pago_id' => $tipoPagoId,
         'notas' => $notas,
         'activo' => $activo,
@@ -75,12 +90,19 @@ if ($diaPreseleccionado !== null && ($diaPreseleccionado < 1 || $diaPreseleccion
 $defaults = [
     'nombre' => '',
     'dia_pago' => $diaPreseleccionado ?? 5,
+    'tipo_monto' => 'variable',
+    'monto' => 0,
     'tipo_pago_id' => $tiposPago[0]['id'] ?? '',
     'notas' => '',
     'activo' => 1,
 ];
 
 $data = $pago ? array_merge($defaults, $pago) : $defaults;
+$tipoMontoActual = ($data['tipo_monto'] ?? 'variable') === 'fijo' ? 'fijo' : 'variable';
+$montoMostrar = '';
+if ($tipoMontoActual === 'fijo') {
+    $montoMostrar = number_format((float) $data['monto'], fmod((float) $data['monto'], 1.0) ? 2 : 0, ',', '.');
+}
 
 $pageTitle = $id ? 'Editar fecha de pago' : 'Agregar en el calendario';
 $volverUrl = urlMes('calendario.php', $mesCalendario, $anioCalendario);
@@ -94,7 +116,7 @@ require __DIR__ . '/includes/header.php';
             <?php if ($desdeCalendario): ?>
                 Día <?= (int) $data['dia_pago'] ?> · <?= monthName($mesCalendario) ?> <?= $anioCalendario ?> y todos los meses siguientes
             <?php else: ?>
-                Solo la fecha es fija. El valor lo registras mes a mes en el calendario.
+                Define el día y si el valor es fijo o cambia cada mes.
             <?php endif; ?>
         </p>
     </div>
@@ -115,7 +137,7 @@ require __DIR__ . '/includes/header.php';
 
         <?php if ($desdeCalendario): ?>
             <div class="alert alert-info">
-                Esta cuenta aparecerá el <strong>día <?= (int) $data['dia_pago'] ?></strong> de <?= monthName($mesCalendario) ?> <?= $anioCalendario ?> en adelante. El valor lo asignas cuando toque cada mes.
+                Esta cuenta aparecerá el <strong>día <?= (int) $data['dia_pago'] ?></strong> de <?= monthName($mesCalendario) ?> <?= $anioCalendario ?> en adelante.
             </div>
         <?php endif; ?>
 
@@ -137,6 +159,30 @@ require __DIR__ . '/includes/header.php';
                         </option>
                     <?php endfor; ?>
                 </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Tipo de valor *</label>
+                <div class="d-flex flex-column gap-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipo_monto" id="tipo_variable" value="variable" <?= $tipoMontoActual === 'variable' ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="tipo_variable">
+                            <strong>Variable</strong> — lo asignas mes a mes (tarjeta, luz, etc.)
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipo_monto" id="tipo_fijo" value="fijo" <?= $tipoMontoActual === 'fijo' ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="tipo_fijo">
+                            <strong>Fijo</strong> — el mismo valor todos los meses (arriendo, internet, etc.)
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3" id="monto-fijo-group" style="<?= $tipoMontoActual === 'fijo' ? '' : 'display:none' ?>">
+                <label for="monto" class="form-label">Valor fijo *</label>
+                <input type="text" class="form-control" id="monto" name="monto" value="<?= h($montoMostrar) ?>" placeholder="Ej: 25,00" <?= $tipoMontoActual === 'fijo' ? 'required' : '' ?>>
+                <div class="form-text">Se aplicará automáticamente en cada mes. Si lo cambias, actualiza los meses pendientes.</div>
             </div>
 
             <div class="mb-3">
@@ -187,5 +233,26 @@ require __DIR__ . '/includes/header.php';
         </form>
     </div>
 </div>
+
+<script>
+(function () {
+    var radios = document.querySelectorAll('input[name="tipo_monto"]');
+    var group = document.getElementById('monto-fijo-group');
+    var input = document.getElementById('monto');
+
+    function sync() {
+        var fijo = document.getElementById('tipo_fijo').checked;
+        group.style.display = fijo ? '' : 'none';
+        input.required = fijo;
+        if (!fijo) {
+            input.value = '';
+        }
+    }
+
+    radios.forEach(function (radio) {
+        radio.addEventListener('change', sync);
+    });
+})();
+</script>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>

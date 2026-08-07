@@ -62,7 +62,8 @@ require __DIR__ . '/includes/header.php';
 <div class="card shadow-sm" style="max-width: 640px;">
     <div class="card-body">
         <div class="alert alert-info">
-            El valor cambia cada mes. Si no hay nada que pagar, ingresa <strong>0</strong> y quedará en verde como resuelto.
+            Este valor aplica solo a este mes. Si la cuenta es de valor fijo, edítala en Fechas de pago para que se repita sola.
+            Si no hay nada que pagar, ingresa <strong>0</strong> y quedará en verde.
         </div>
 
         <?php if ($errors): ?>

@@ -473,6 +473,11 @@ function getPagoFijo(int $id): ?array
     return $row ?: null;
 }
 
+function pagoMontoEsFijo(array $pago): bool
+{
+    return ($pago['tipo_monto'] ?? 'variable') === 'fijo';
+}
+
 function syncPagosFijosMes(int $mes, int $anio): int
 {
     $db = getDB();
@@ -480,7 +485,7 @@ function syncPagosFijosMes(int $mes, int $anio): int
     $creados = 0;
 
     $check = $db->prepare('
-        SELECT id FROM cuentas
+        SELECT id, valor_asignado, estado FROM cuentas
         WHERE usuario_id = ? AND pago_fijo_id = ? AND mes = ? AND anio = ?
         LIMIT 1
     ');
@@ -488,13 +493,30 @@ function syncPagosFijosMes(int $mes, int $anio): int
     $insert = $db->prepare("
         INSERT INTO cuentas (
             usuario_id, nombre, monto, fecha_vencimiento, tipo_pago_id, pago_fijo_id,
-            valor_asignado, estado, notas, mes, anio
-        ) VALUES (?, ?, 0, ?, ?, ?, 0, 'pendiente', ?, ?, ?)
+            valor_asignado, estado, fecha_pago, notas, mes, anio
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    $fillFijo = $db->prepare("
+        UPDATE cuentas
+        SET monto = ?, valor_asignado = 1, estado = ?, fecha_pago = ?
+        WHERE id = ? AND usuario_id = ? AND estado = 'pendiente' AND valor_asignado = 0
     ");
 
     foreach ($pagosFijos as $pago) {
+        $esFijo = pagoMontoEsFijo($pago);
+        $monto = $esFijo ? (float) $pago['monto'] : 0.0;
+        $valorAsignado = $esFijo ? 1 : 0;
+        $sinPago = $esFijo && $monto === 0.0;
+        $estado = $sinPago ? 'pagado' : 'pendiente';
+        $fechaPago = $sinPago ? date('Y-m-d') : null;
+
         $check->execute([getUsuarioId(), (int) $pago['id'], $mes, $anio]);
-        if ($check->fetch()) {
+        $existente = $check->fetch();
+        if ($existente) {
+            if ($esFijo && empty($existente['valor_asignado']) && $existente['estado'] === 'pendiente') {
+                $fillFijo->execute([$monto, $estado, $fechaPago, (int) $existente['id'], getUsuarioId()]);
+            }
             continue;
         }
 
@@ -502,9 +524,13 @@ function syncPagosFijosMes(int $mes, int $anio): int
         $insert->execute([
             getUsuarioId(),
             $pago['nombre'],
+            $monto,
             $fecha,
             $pago['tipo_pago_id'],
             $pago['id'],
+            $valorAsignado,
+            $estado,
+            $fechaPago,
             $pago['notas'],
             $mes,
             $anio,
@@ -513,6 +539,25 @@ function syncPagosFijosMes(int $mes, int $anio): int
     }
 
     return $creados;
+}
+
+/**
+ * Aplica el valor fijo a meses pendientes (no pagados) vinculados a la fecha de pago.
+ */
+function propagarMontoFijo(int $pagoFijoId, float $monto): void
+{
+    $sinPago = $monto === 0.0;
+    $estado = $sinPago ? 'pagado' : 'pendiente';
+    $fechaPago = $sinPago ? date('Y-m-d') : null;
+
+    $stmt = getDB()->prepare("
+        UPDATE cuentas
+        SET monto = ?, valor_asignado = 1, estado = ?, fecha_pago = ?
+        WHERE usuario_id = ?
+          AND pago_fijo_id = ?
+          AND estado = 'pendiente'
+    ");
+    $stmt->execute([$monto, $estado, $fechaPago, getUsuarioId(), $pagoFijoId]);
 }
 
 function ensureMesListo(int $mes, int $anio): void
