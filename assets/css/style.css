@@ -87,28 +87,8 @@ body {
     overflow: hidden;
 }
 
-.btn-day-info {
+.btn-day-hit {
     display: none;
-    width: 1.35rem;
-    height: 1.35rem;
-    padding: 0;
-    border: 1px solid var(--bs-primary);
-    border-radius: 50%;
-    background: #fff;
-    color: var(--bs-primary);
-    font-size: 0.7rem;
-    font-weight: 700;
-    font-style: italic;
-    line-height: 1;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.btn-day-info:hover,
-.btn-day-info:focus-visible {
-    background: var(--bs-primary);
-    color: #fff;
 }
 
 .calendar-day.empty {
@@ -124,6 +104,7 @@ body {
 .calendar-day.day-pending { background: #fffbeb; }
 .calendar-day.day-overdue { background: #fef2f2; }
 .calendar-day.day-unassigned { background: #f8fafc; }
+.calendar-day.day-paid { background: #f0fdf4; }
 
 .calendar-day-header {
     display: flex;
@@ -263,51 +244,52 @@ body {
     }
 
     .calendar-weekday {
-        font-size: 0.65rem;
-        padding: 0.15rem 0;
+        font-size: 0;
+        line-height: 0;
+        color: transparent;
+        height: 0.45rem;
+        padding: 0;
+        overflow: hidden;
     }
 
     .calendar-day {
-        min-height: 52px;
-        padding: 0.2rem;
-        align-items: center;
+        position: relative;
+        min-height: 40px;
+        padding: 0;
+        align-items: stretch;
+        justify-content: stretch;
     }
 
-    .calendar-day-header {
-        width: 100%;
-        margin-bottom: 0;
-        justify-content: center;
-        gap: 0.15rem;
-        flex-wrap: wrap;
-    }
-
-    .day-number {
-        min-width: 1.35rem;
-        height: 1.35rem;
-        font-size: 0.8rem;
-    }
-
+    .calendar-day-header,
     .day-total,
     .calendar-events-desktop {
         display: none !important;
     }
 
-    .btn-day-info {
-        display: inline-flex;
+    .btn-day-hit {
+        display: block;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        border: 0;
+        border-radius: inherit;
+        background: transparent;
+        cursor: pointer;
+        z-index: 1;
     }
 
-    .calendar-day.day-unassigned .btn-day-info {
-        border-color: #94a3b8;
-        color: #64748b;
+    .calendar-day.day-unassigned { background: #94a3b8; }
+    .calendar-day.day-pending { background: #f59e0b; }
+    .calendar-day.day-overdue { background: #dc2626; }
+    .calendar-day.day-paid { background: #16a34a; }
+
+    .calendar-day.today {
+        box-shadow: inset 0 0 0 2px #0d6efd;
     }
 
-    .calendar-day.day-pending .btn-day-info {
-        border-color: #f59e0b;
-        color: #b45309;
-    }
-
-    .calendar-day.day-overdue .btn-day-info {
-        border-color: #dc2626;
-        color: #dc2626;
+    .calendar-day:not(.empty):not(.day-unassigned):not(.day-pending):not(.day-overdue):not(.day-paid) {
+        background: #e9ecef;
     }
 }

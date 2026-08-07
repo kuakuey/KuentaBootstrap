@@ -64,11 +64,23 @@ require __DIR__ . '/includes/header.php';
                             $v = cuentaEstadoVisual($c);
                             if ($v === 'overdue') { $dayVisual = 'overdue'; break; }
                             if ($v === 'pending' && $dayVisual !== 'overdue') { $dayVisual = 'pending'; }
-                            if ($v === 'unassigned' && $dayVisual === 'normal') { $dayVisual = 'unassigned'; }
+                            if ($v === 'unassigned' && !in_array($dayVisual, ['overdue', 'pending'], true)) {
+                                $dayVisual = 'unassigned';
+                            }
+                            if ($v === 'paid' && $dayVisual === 'normal') { $dayVisual = 'paid'; }
                         }
                         $dayModalId = 'day-detail-' . $day;
                     ?>
                         <div class="calendar-day <?= $isToday ? 'today' : '' ?> day-<?= $dayVisual ?>">
+                            <?php if (!empty($dayCuentas)): ?>
+                                <button type="button"
+                                        class="btn-day-hit"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#dayInfoModal"
+                                        data-day-title="Día <?= $day ?> · <?= monthName($mes) ?>"
+                                        data-day-source="#<?= $dayModalId ?>"
+                                        aria-label="Ver cuentas del día <?= $day ?>"></button>
+                            <?php endif; ?>
                             <div class="calendar-day-header">
                                 <a href="pago-fijo-form.php?dia=<?= $day ?>&mes=<?= $mes ?>&anio=<?= $anio ?>"
                                    class="day-number"
@@ -77,17 +89,6 @@ require __DIR__ . '/includes/header.php';
                                 </a>
                                 <?php if ($totalDia > 0): ?>
                                     <span class="day-total"><?= formatMoneyShort($totalDia) ?></span>
-                                <?php endif; ?>
-                                <?php if (!empty($dayCuentas)): ?>
-                                    <button type="button"
-                                            class="btn-day-info"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#dayInfoModal"
-                                            data-day-title="Día <?= $day ?> · <?= monthName($mes) ?>"
-                                            data-day-source="#<?= $dayModalId ?>"
-                                            aria-label="Ver cuentas del día <?= $day ?>">
-                                        i
-                                    </button>
                                 <?php endif; ?>
                             </div>
 
