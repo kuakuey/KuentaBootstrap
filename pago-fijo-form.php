@@ -169,7 +169,7 @@ require __DIR__ . '/includes/header.php';
             <div class="mb-3">
                 <label for="persona_id" class="form-label">Persona / cuenta</label>
                 <select class="form-select" id="persona_id" name="persona_id">
-                    <option value="">— Sin asignar —</option>
+                    <option value="">— Para todos —</option>
                     <?php foreach ($personas as $persona): ?>
                         <option value="<?= (int) $persona['id'] ?>" <?= (string) $data['persona_id'] === (string) $persona['id'] ? 'selected' : '' ?>>
                             <?= h($persona['nombre']) ?>
@@ -180,7 +180,7 @@ require __DIR__ . '/includes/header.php';
                     <?php if (empty($personas)): ?>
                         Aún no hay personas. <a href="personas.php">Créalas aquí</a> (ej. Cristhian, Jessy).
                     <?php else: ?>
-                        En el calendario, <strong>Todos</strong> muestra todo sin filtros; Cristhian/Jessy filtran por persona.
+                        <strong>Para todos</strong> aparece en cualquier filtro. Una persona solo se ve en ese filtro y en Todos.
                     <?php endif; ?>
                 </div>
             </div>

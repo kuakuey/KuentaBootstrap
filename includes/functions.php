@@ -282,7 +282,8 @@ function sqlFiltroPersona(string $alias, ?int $personaId): string
     if ($personaId === null) {
         return '';
     }
-    return " AND {$alias}.persona_id = " . (int) $personaId;
+    // Incluye la persona elegida y las cuentas compartidas (sin persona = para todos).
+    return " AND ({$alias}.persona_id = " . (int) $personaId . " OR {$alias}.persona_id IS NULL)";
 }
 
 function getCuentasParaPagar(int $mes, int $anio, ?int $personaId = null): array
