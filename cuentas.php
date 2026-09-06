@@ -10,19 +10,16 @@ $filtro = $_GET['filtro'] ?? 'todas';
 if (!in_array($filtro, ['todas', 'pendientes', 'pagadas'], true)) {
     $filtro = 'todas';
 }
-$personaId = parsePersonaFiltro(isset($_GET['persona']) ? (int) $_GET['persona'] : null);
+$personaId = getPersonaFiltroActivo();
 $filtroExtra = array_filter([
     'filtro' => $filtro !== 'todas' ? $filtro : null,
-    'persona' => $personaId,
 ]);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $filtro = $_POST['filtro'] ?? $filtro;
-    $personaId = parsePersonaFiltro(isset($_POST['persona']) ? (int) $_POST['persona'] : $personaId);
     $filtroExtra = array_filter([
         'filtro' => $filtro !== 'todas' ? $filtro : null,
-        'persona' => $personaId,
     ]);
 
     if ($action === 'pagar_seleccionadas') {
@@ -71,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ensureMesListo($mes, $anio);
 
 $cuentas = getCuentasMes($mes, $anio, $personaId);
-$resumen = resumenMes($mes, $anio);
+$resumen = resumenMes($mes, $anio, $personaId);
 
 if ($filtro === 'pendientes') {
     $cuentas = array_values(array_filter($cuentas, fn($c) => $c['estado'] === 'pendiente'));
@@ -94,7 +91,7 @@ require __DIR__ . '/includes/header.php';
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
     <div>
         <h1 class="h3 mb-1">Cuentas del mes</h1>
-        <p class="text-muted mb-0"><?= monthName($mes) ?> <?= $anio ?> &mdash; <?= formatMoney((float) $resumen['monto_total']) ?> total</p>
+        <p class="text-muted mb-0"><?= monthName($mes) ?> <?= $anio ?> &mdash; <?= formatMoney((float) $resumen['monto_total']) ?> total<?= $personaId ? ' · filtrado por persona' : '' ?></p>
     </div>
     <div class="d-flex flex-wrap gap-2">
         <div class="btn-group">
@@ -108,28 +105,25 @@ require __DIR__ . '/includes/header.php';
 
 <ul class="nav nav-pills mb-3 gap-1">
     <li class="nav-item">
-        <a class="nav-link <?= $filtro === 'todas' ? 'active' : '' ?>" href="<?= urlMes('cuentas.php', $mes, $anio, array_filter(['filtro' => 'todas', 'persona' => $personaId])) ?>">Todas (<?= (int) $resumen['total'] ?>)</a>
+        <a class="nav-link <?= $filtro === 'todas' ? 'active' : '' ?>" href="<?= urlMes('cuentas.php', $mes, $anio, ['filtro' => 'todas']) ?>">Todas (<?= (int) $resumen['total'] ?>)</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link <?= $filtro === 'pendientes' ? 'active' : '' ?>" href="<?= urlMes('cuentas.php', $mes, $anio, array_filter(['filtro' => 'pendientes', 'persona' => $personaId])) ?>">Pendientes (<?= (int) $resumen['pendientes'] ?>)</a>
+        <a class="nav-link <?= $filtro === 'pendientes' ? 'active' : '' ?>" href="<?= urlMes('cuentas.php', $mes, $anio, ['filtro' => 'pendientes']) ?>">Pendientes (<?= (int) $resumen['pendientes'] ?>)</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link <?= $filtro === 'pagadas' ? 'active' : '' ?>" href="<?= urlMes('cuentas.php', $mes, $anio, array_filter(['filtro' => 'pagadas', 'persona' => $personaId])) ?>">Pagadas (<?= (int) $resumen['pagadas'] ?>)</a>
+        <a class="nav-link <?= $filtro === 'pagadas' ? 'active' : '' ?>" href="<?= urlMes('cuentas.php', $mes, $anio, ['filtro' => 'pagadas']) ?>">Pagadas (<?= (int) $resumen['pagadas'] ?>)</a>
     </li>
 </ul>
 
 <div class="card shadow-sm">
     <div class="card-body">
         <?php if (empty($cuentas)): ?>
-            <p class="text-muted mb-0">No hay cuentas registradas para este mes.</p>
+            <p class="text-muted mb-0"><?= $personaId ? 'No hay cuentas de esta persona para este mes.' : 'No hay cuentas registradas para este mes.' ?></p>
         <?php else: ?>
             <?php if ($hayPagables): ?>
                 <form method="post" id="form-pagar">
                     <input type="hidden" name="action" value="pagar_seleccionadas">
                     <input type="hidden" name="filtro" value="<?= h($filtro) ?>">
-                    <?php if ($personaId): ?>
-                        <input type="hidden" name="persona" value="<?= $personaId ?>">
-                    <?php endif; ?>
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="select-all">

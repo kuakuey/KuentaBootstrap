@@ -59,7 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('pagos-fijos.php');
 }
 
-$pagos = getPagosFijos(false);
+$personaId = getPersonaFiltroActivo();
+$pagos = getPagosFijos(false, $personaId);
 $seriesHuerfanas = getSeriesHuerfanas();
 $totalHuerfanas = array_sum(array_column($seriesHuerfanas, 'total'));
 $mes = (int) date('n');
@@ -147,7 +148,7 @@ require __DIR__ . '/includes/header.php';
 <div class="card shadow-sm">
     <div class="card-body">
         <?php if (empty($pagos)): ?>
-            <p class="text-muted">Aún no hay fechas de pago.</p>
+            <p class="text-muted"><?= $personaId ? 'No hay fechas de pago para esta persona.' : 'Aún no hay fechas de pago.' ?></p>
             <a href="pago-fijo-form.php" class="btn btn-primary">Agregar la primera</a>
         <?php else: ?>
             <div class="table-responsive">

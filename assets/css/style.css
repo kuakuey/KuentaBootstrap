@@ -43,6 +43,15 @@ body {
     flex-shrink: 0;
 }
 
+.persona-switcher .color-dot {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+.dropdown-menu .color-dot {
+    width: 10px;
+    height: 10px;
+}
+
 .color-hint.green { color: #198754; font-weight: 600; }
 .color-hint.red { color: #dc3545; font-weight: 600; }
 

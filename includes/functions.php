@@ -274,7 +274,52 @@ function parsePersonaFiltro(?int $personaId): ?int
     if ($personaId === null || $personaId <= 0) {
         return null;
     }
-    return getPersona($personaId) ? $personaId : null;
+    $persona = getPersona($personaId);
+    if (!$persona || empty($persona['activo'])) {
+        return null;
+    }
+    return $personaId;
+}
+
+function setPersonaFiltro(?int $personaId): void
+{
+    $_SESSION['persona_filtro_id'] = parsePersonaFiltro($personaId);
+}
+
+function getPersonaFiltroActivo(): ?int
+{
+    if (array_key_exists('persona', $_GET)) {
+        $raw = $_GET['persona'];
+        $id = ($raw === '' || (int) $raw <= 0) ? null : parsePersonaFiltro((int) $raw);
+        $_SESSION['persona_filtro_id'] = $id;
+        return $id;
+    }
+
+    if (!array_key_exists('persona_filtro_id', $_SESSION)) {
+        return null;
+    }
+
+    $stored = $_SESSION['persona_filtro_id'];
+    if ($stored === null) {
+        return null;
+    }
+
+    $valid = parsePersonaFiltro((int) $stored);
+    $_SESSION['persona_filtro_id'] = $valid;
+    return $valid;
+}
+
+function getPersonaActiva(): ?array
+{
+    $id = getPersonaFiltroActivo();
+    return $id ? getPersona($id) : null;
+}
+
+function urlCambiarPersona(?int $personaId): string
+{
+    $params = $_GET;
+    $params['persona'] = $personaId ?? 0;
+    return basename($_SERVER['PHP_SELF']) . '?' . http_build_query($params);
 }
 
 function sqlFiltroPersona(string $alias, ?int $personaId): string
@@ -282,8 +327,9 @@ function sqlFiltroPersona(string $alias, ?int $personaId): string
     if ($personaId === null) {
         return '';
     }
+    $col = $alias !== '' ? "{$alias}.persona_id" : 'persona_id';
     // Incluye la persona elegida y las cuentas compartidas (sin persona = para todos).
-    return " AND ({$alias}.persona_id = " . (int) $personaId . " OR {$alias}.persona_id IS NULL)";
+    return " AND ({$col} = " . (int) $personaId . " OR {$col} IS NULL)";
 }
 
 function getCuentasParaPagar(int $mes, int $anio, ?int $personaId = null): array
@@ -442,9 +488,9 @@ function getCuentasCalendario(int $mes, int $anio, ?int $personaId = null): arra
     return $grouped;
 }
 
-function resumenMes(int $mes, int $anio): array
+function resumenMes(int $mes, int $anio, ?int $personaId = null): array
 {
-    $stmt = getDB()->prepare("
+    $sql = "
         SELECT
             COUNT(*) AS total,
             SUM(CASE WHEN estado = 'pagado' THEN 1 ELSE 0 END) AS pagadas,
@@ -455,7 +501,9 @@ function resumenMes(int $mes, int $anio): array
             SUM(CASE WHEN estado = 'pendiente' AND valor_asignado = 0 THEN 1 ELSE 0 END) AS sin_valor
         FROM cuentas
         WHERE usuario_id = ? AND mes = ? AND anio = ?
-    ");
+    ";
+    $sql .= sqlFiltroPersona('', $personaId);
+    $stmt = getDB()->prepare($sql);
     $stmt->execute([getUsuarioId(), $mes, $anio]);
     return $stmt->fetch();
 }
@@ -494,7 +542,7 @@ function fechaVencimientoFija(int $diaPago, int $mes, int $anio): string
     return sprintf('%04d-%02d-%02d', $anio, $mes, $dia);
 }
 
-function getPagosFijos(bool $soloActivos = true): array
+function getPagosFijos(bool $soloActivos = true, ?int $personaId = null): array
 {
     $sql = "
         SELECT p.*, t.nombre AS tipo_pago_nombre, t.color AS tipo_pago_color,
@@ -504,6 +552,7 @@ function getPagosFijos(bool $soloActivos = true): array
         LEFT JOIN personas pe ON p.persona_id = pe.id
         WHERE p.usuario_id = ?
     ";
+    $sql .= sqlFiltroPersona('p', $personaId);
     if ($soloActivos) {
         $sql .= ' AND p.activo = 1';
     }

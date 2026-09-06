@@ -6,9 +6,8 @@ require_once __DIR__ . '/includes/functions.php';
     isset($_GET['anio']) ? (int) $_GET['anio'] : null
 );
 
-$personaId = parsePersonaFiltro(isset($_GET['persona']) ? (int) $_GET['persona'] : null);
+$personaId = getPersonaFiltroActivo();
 $personas = getPersonas(true);
-$filtroExtra = $personaId ? ['persona' => $personaId] : [];
 
 ensureMesListo($mes, $anio);
 
@@ -29,16 +28,16 @@ require __DIR__ . '/includes/header.php';
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
     <h1 class="h3 mb-0"><?= monthName($mes) ?> <?= $anio ?></h1>
     <div class="btn-group">
-        <a href="<?= urlMes('calendario.php', $mes - 1, $anio, $filtroExtra) ?>" class="btn btn-outline-secondary">&larr;</a>
-        <a href="<?= urlMes('calendario.php', (int) date('n'), (int) date('Y'), $filtroExtra) ?>" class="btn btn-outline-secondary">Hoy</a>
-        <a href="<?= urlMes('calendario.php', $mes + 1, $anio, $filtroExtra) ?>" class="btn btn-outline-secondary">&rarr;</a>
+        <a href="<?= urlMes('calendario.php', $mes - 1, $anio) ?>" class="btn btn-outline-secondary">&larr;</a>
+        <a href="<?= urlMes('calendario.php', (int) date('n'), (int) date('Y')) ?>" class="btn btn-outline-secondary">Hoy</a>
+        <a href="<?= urlMes('calendario.php', $mes + 1, $anio) ?>" class="btn btn-outline-secondary">&rarr;</a>
     </div>
 </div>
 
 <div class="persona-filter mb-4">
     <div class="d-flex flex-wrap align-items-center gap-2">
         <span class="text-muted small me-1">Filtrar:</span>
-        <a href="<?= urlMes('calendario.php', $mes, $anio) ?>"
+        <a href="<?= urlMes('calendario.php', $mes, $anio, ['persona' => 0]) ?>"
            class="persona-chip <?= $personaId === null ? 'active' : '' ?>"
            title="Calendario completo, sin filtros">
             Todos
@@ -90,9 +89,6 @@ require __DIR__ . '/includes/header.php';
                             if ($v === 'paid' && $dayVisual === 'normal') { $dayVisual = 'paid'; }
                         }
                         $addParams = 'dia=' . $day . '&mes=' . $mes . '&anio=' . $anio;
-                        if ($personaId) {
-                            $addParams .= '&persona=' . $personaId;
-                        }
                     ?>
                         <div class="calendar-day <?= $isToday ? 'today' : '' ?> day-<?= $dayVisual ?>">
                             <div class="calendar-day-header">
@@ -109,9 +105,6 @@ require __DIR__ . '/includes/header.php';
                                     $link = !cuentaValorAsignado($cuenta) || ($visual === 'pending' || $visual === 'overdue')
                                         ? 'asignar-valor.php?id=' . (int) $cuenta['id'] . '&mes=' . $mes . '&anio=' . $anio
                                         : 'cuenta-form.php?id=' . (int) $cuenta['id'] . '&mes=' . $mes . '&anio=' . $anio;
-                                    if ($personaId) {
-                                        $link .= '&persona=' . $personaId;
-                                    }
                                 ?>
                                     <a href="<?= $link ?>"
                                        class="calendar-event event-<?= $visual ?>"
@@ -135,7 +128,7 @@ require __DIR__ . '/includes/header.php';
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h2 class="h6 mb-0">Por pagar</h2>
                 <?php if (!empty($paraPagar)): ?>
-                    <a href="<?= urlMes('cuentas.php', $mes, $anio, array_merge(['filtro' => 'pendientes'], $filtroExtra)) ?>" class="small">Ver lista</a>
+                    <a href="<?= urlMes('cuentas.php', $mes, $anio, ['filtro' => 'pendientes']) ?>" class="small">Ver lista</a>
                 <?php endif; ?>
             </div>
             <div class="card-body">
@@ -158,7 +151,7 @@ require __DIR__ . '/includes/header.php';
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                    <a href="<?= urlMes('cuentas.php', $mes, $anio, array_merge(['filtro' => 'pendientes'], $filtroExtra)) ?>" class="btn btn-primary w-100">Ir a la lista</a>
+                    <a href="<?= urlMes('cuentas.php', $mes, $anio, ['filtro' => 'pendientes']) ?>" class="btn btn-primary w-100">Ir a la lista</a>
                 <?php endif; ?>
             </div>
         </div>

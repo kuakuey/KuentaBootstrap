@@ -12,7 +12,7 @@ $tiposPago = getTiposPago();
 $personas = getPersonas();
 $errors = [];
 $desdeCalendario = !$id && isset($_GET['dia']);
-$personaFiltro = parsePersonaFiltro(isset($_GET['persona']) ? (int) $_GET['persona'] : null);
+$personaFiltro = getPersonaFiltroActivo();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nombre = trim($_POST['nombre'] ?? '');
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $generarFuturos = isset($_POST['generar_futuros']);
     $mesCalendario = (int) ($_POST['mes_calendario'] ?? date('n'));
     $anioCalendario = (int) ($_POST['anio_calendario'] ?? date('Y'));
-    $personaFiltro = parsePersonaFiltro(isset($_POST['persona_filtro']) ? (int) $_POST['persona_filtro'] : null);
+    $personaFiltro = getPersonaFiltroActivo();
 
     if ($personaId && !getPersona($personaId)) {
         $personaId = null;
@@ -77,8 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $redirExtra = $personaFiltro ? ['persona' => $personaFiltro] : [];
-        redirect(urlMes('calendario.php', $mesCalendario, $anioCalendario, $redirExtra));
+        redirect(urlMes('calendario.php', $mesCalendario, $anioCalendario));
     }
 
     $pago = [
@@ -117,8 +116,7 @@ if ($tipoMontoActual === 'fijo') {
 }
 
 $pageTitle = $id ? 'Editar fecha de pago' : 'Agregar en el calendario';
-$volverExtra = $personaFiltro ? ['persona' => $personaFiltro] : [];
-$volverUrl = urlMes('calendario.php', $mesCalendario, $anioCalendario, $volverExtra);
+$volverUrl = urlMes('calendario.php', $mesCalendario, $anioCalendario);
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -157,9 +155,6 @@ require __DIR__ . '/includes/header.php';
         <form method="post">
             <input type="hidden" name="mes_calendario" value="<?= $mesCalendario ?>">
             <input type="hidden" name="anio_calendario" value="<?= $anioCalendario ?>">
-            <?php if ($personaFiltro): ?>
-                <input type="hidden" name="persona_filtro" value="<?= $personaFiltro ?>">
-            <?php endif; ?>
 
             <div class="mb-3">
                 <label for="nombre" class="form-label">Nombre *</label>

@@ -4,8 +4,13 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/functions.php';
 
 $currentPage = basename($_SERVER['PHP_SELF'], '.php');
+$usuario = getUsuarioActual();
+$headerPersonas = $usuario ? getPersonas(true) : [];
+$personaActiva = $usuario ? getPersonaActiva() : null;
+$personaIdActiva = $personaActiva ? (int) $personaActiva['id'] : null;
 
 function navActive(string $page, array $pages): string
 {
@@ -55,9 +60,47 @@ function flashBootstrapType(string $type): string
                         <a class="nav-link <?= navActive($currentPage, ['tipos-pago']) ?>" href="tipos-pago.php">Tipos de pago</a>
                     </li>
                 </ul>
-                <?php $usuario = getUsuarioActual(); if ($usuario): ?>
+                <?php if ($usuario): ?>
                     <div class="d-flex align-items-center gap-2 text-white">
-                        <span class="small opacity-75"><?= h($usuario['nombre']) ?></span>
+                        <?php if (!empty($headerPersonas)): ?>
+                            <div class="dropdown">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-light dropdown-toggle d-inline-flex align-items-center gap-2 persona-switcher"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
+                                        aria-label="Cambiar de persona">
+                                    <?php if ($personaActiva): ?>
+                                        <span class="color-dot" style="background: <?= h($personaActiva['color']) ?>"></span>
+                                        <span><?= h($personaActiva['nombre']) ?></span>
+                                    <?php else: ?>
+                                        <span>Todos</span>
+                                    <?php endif; ?>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item <?= $personaIdActiva === null ? 'active' : '' ?>"
+                                           href="<?= h(urlCambiarPersona(null)) ?>">
+                                            Todos
+                                        </a>
+                                    </li>
+                                    <?php foreach ($headerPersonas as $persona): ?>
+                                        <li>
+                                            <a class="dropdown-item d-flex align-items-center gap-2 <?= $personaIdActiva === (int) $persona['id'] ? 'active' : '' ?>"
+                                               href="<?= h(urlCambiarPersona((int) $persona['id'])) ?>">
+                                                <span class="color-dot" style="background: <?= h($persona['color']) ?>"></span>
+                                                <?= h($persona['nombre']) ?>
+                                            </a>
+                                        </li>
+                                    <?php endforeach; ?>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="personas.php">Administrar personas</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        <?php else: ?>
+                            <span class="small opacity-75"><?= h($usuario['nombre']) ?></span>
+                        <?php endif; ?>
                         <a href="logout.php" class="btn btn-sm btn-outline-light">Salir</a>
                     </div>
                 <?php endif; ?>
