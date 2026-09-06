@@ -53,14 +53,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $tipos = getTiposPago(false);
-$pageTitle = 'Tipos de pago';
+$pageTitle = 'Avanzado';
 require __DIR__ . '/includes/header.php';
+$avanzadoTab = 'tipos-pago';
+require __DIR__ . '/includes/avanzado-tabs.php';
 ?>
 
-<div class="mb-4">
-    <h1 class="h3 mb-1">Tipos de pago</h1>
-    <p class="text-muted mb-0">Agrega métodos para seleccionarlos rápido al registrar cuentas</p>
-</div>
+<p class="text-muted mb-4">Agrega métodos para seleccionarlos rápido al registrar cuentas.</p>
 
 <div class="row g-4">
     <div class="col-lg-4">

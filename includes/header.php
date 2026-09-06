@@ -54,10 +54,7 @@ function flashBootstrapType(string $type): string
                         <a class="nav-link <?= navActive($currentPage, ['cuentas', 'cuenta-form', 'pagar']) ?>" href="cuentas.php">Lista</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?= navActive($currentPage, ['personas']) ?>" href="personas.php">Personas</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?= navActive($currentPage, ['tipos-pago']) ?>" href="tipos-pago.php">Tipos de pago</a>
+                        <a class="nav-link <?= navActive($currentPage, ['personas', 'tipos-pago']) ?>" href="personas.php">Avanzado</a>
                     </li>
                 </ul>
                 <?php if ($usuario): ?>

@@ -53,17 +53,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $personas = getPersonas(false);
-$pageTitle = 'Personas / cuentas';
+$pageTitle = 'Avanzado';
 require __DIR__ . '/includes/header.php';
+$avanzadoTab = 'personas';
+require __DIR__ . '/includes/avanzado-tabs.php';
 ?>
 
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-    <div>
-        <h1 class="h3 mb-1">Personas / cuentas</h1>
-        <p class="text-muted mb-0">Separa pagos por persona (ej. Cristhian, Jessy). En el calendario, <strong>Todos</strong> muestra todo sin filtros.</p>
-    </div>
-    <a href="calendario.php" class="btn btn-outline-secondary">&larr; Calendario</a>
-</div>
+<p class="text-muted mb-4">Separa pagos por persona (ej. Cristhian, Jessy). En el header, <strong>Todos</strong> muestra todo sin filtros.</p>
 
 <div class="row g-4">
     <div class="col-lg-4">
