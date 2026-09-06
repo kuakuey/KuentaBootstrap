@@ -7,7 +7,6 @@ require_once __DIR__ . '/includes/functions.php';
 );
 
 $personaId = getPersonaFiltroActivo();
-$personas = getPersonas(true);
 
 ensureMesListo($mes, $anio);
 
@@ -32,30 +31,6 @@ require __DIR__ . '/includes/header.php';
         <a href="<?= urlMes('calendario.php', (int) date('n'), (int) date('Y')) ?>" class="btn btn-outline-secondary">Hoy</a>
         <a href="<?= urlMes('calendario.php', $mes + 1, $anio) ?>" class="btn btn-outline-secondary">&rarr;</a>
     </div>
-</div>
-
-<div class="persona-filter mb-4">
-    <div class="d-flex flex-wrap align-items-center gap-2">
-        <span class="text-muted small me-1">Filtrar:</span>
-        <a href="<?= urlMes('calendario.php', $mes, $anio, ['persona' => 0]) ?>"
-           class="persona-chip <?= $personaId === null ? 'active' : '' ?>"
-           title="Calendario completo, sin filtros">
-            Todos
-        </a>
-        <?php foreach ($personas as $persona): ?>
-            <a href="<?= urlMes('calendario.php', $mes, $anio, ['persona' => (int) $persona['id']]) ?>"
-               class="persona-chip <?= $personaId === (int) $persona['id'] ? 'active' : '' ?>"
-               style="--persona-color: <?= h($persona['color']) ?>">
-                <?= h($persona['nombre']) ?>
-            </a>
-        <?php endforeach; ?>
-        <a href="personas.php" class="btn btn-sm btn-outline-secondary ms-auto">Administrar personas</a>
-    </div>
-    <?php if (empty($personas)): ?>
-        <p class="text-muted small mt-2 mb-0">
-            Aún no hay personas. <a href="personas.php">Agrega Cristhian, Jessy u otras</a> para filtrar el calendario.
-        </p>
-    <?php endif; ?>
 </div>
 
 <div class="row g-4">
