@@ -542,6 +542,77 @@ function fechaVencimientoFija(int $diaPago, int $mes, int $anio): string
     return sprintf('%04d-%02d-%02d', $anio, $mes, $dia);
 }
 
+function fechaEsDesdeHoy(string $fecha): bool
+{
+    return $fecha >= date('Y-m-d');
+}
+
+/**
+ * Recalcula el vencimiento de cuentas futuras. Los meses cuya nueva fecha
+ * ya quedó en el pasado no se tocan.
+ *
+ * @param array<int, array{id:int|string, mes:int|string, anio:int|string, fecha_vencimiento:string}> $cuentas
+ */
+function aplicarDiaPagoDesdeHoy(array $cuentas, int $diaPago): int
+{
+    $update = getDB()->prepare('
+        UPDATE cuentas SET fecha_vencimiento = ? WHERE id = ? AND usuario_id = ?
+    ');
+    $actualizadas = 0;
+
+    foreach ($cuentas as $cuenta) {
+        $nueva = fechaVencimientoFija($diaPago, (int) $cuenta['mes'], (int) $cuenta['anio']);
+        if (!fechaEsDesdeHoy($nueva) || $nueva === $cuenta['fecha_vencimiento']) {
+            continue;
+        }
+        $update->execute([$nueva, (int) $cuenta['id'], getUsuarioId()]);
+        $actualizadas++;
+    }
+
+    return $actualizadas;
+}
+
+function getCuentasDePagoFijo(int $pagoFijoId): array
+{
+    $stmt = getDB()->prepare('
+        SELECT id, mes, anio, fecha_vencimiento
+        FROM cuentas
+        WHERE usuario_id = ? AND pago_fijo_id = ?
+    ');
+    $stmt->execute([getUsuarioId(), $pagoFijoId]);
+    return $stmt->fetchAll();
+}
+
+function getCuentasAdicionalesPorNombre(string $nombre, ?int $excluirId = null): array
+{
+    $sql = "
+        SELECT c.id, c.mes, c.anio, c.fecha_vencimiento
+        FROM cuentas c
+        LEFT JOIN pagos_fijos p ON p.id = c.pago_fijo_id
+        WHERE c.usuario_id = ?
+          AND c.nombre = ?
+          AND p.id IS NULL
+    ";
+    $params = [getUsuarioId(), $nombre];
+    if ($excluirId) {
+        $sql .= ' AND c.id <> ?';
+        $params[] = $excluirId;
+    }
+    $stmt = getDB()->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
+function propagarDiaPagoFijo(int $pagoFijoId, int $diaPago): int
+{
+    return aplicarDiaPagoDesdeHoy(getCuentasDePagoFijo($pagoFijoId), $diaPago);
+}
+
+function propagarDiaAdicional(string $nombre, int $diaPago, ?int $excluirId = null): int
+{
+    return aplicarDiaPagoDesdeHoy(getCuentasAdicionalesPorNombre($nombre, $excluirId), $diaPago);
+}
+
 function getPagosFijos(bool $soloActivos = true, ?int $personaId = null): array
 {
     $sql = "

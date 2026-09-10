@@ -43,6 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db = getDB();
 
         if ($id) {
+            $diaAnterior = $cuenta ? (int) date('j', strtotime((string) $cuenta['fecha_vencimiento'])) : 0;
+            $diaNuevo = (int) date('j', strtotime($fechaVencimiento));
+            $pagoFijoId = !empty($cuenta['pago_fijo_id']) ? (int) $cuenta['pago_fijo_id'] : 0;
+
             $stmt = $db->prepare("
                 UPDATE cuentas SET
                     nombre = ?, monto = ?, fecha_vencimiento = ?, tipo_pago_id = ?,
@@ -53,7 +57,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $nombre, $monto, $fechaVencimiento, $tipoPagoId,
                 $estado, $fechaPago, $notas, $mesPost, $anioPost, $id, getUsuarioId()
             ]);
-            flash('success', 'Cuenta actualizada correctamente.');
+
+            if ($diaAnterior !== $diaNuevo) {
+                if ($pagoFijoId) {
+                    $stmtDia = $db->prepare('UPDATE pagos_fijos SET dia_pago = ? WHERE id = ? AND usuario_id = ?');
+                    $stmtDia->execute([$diaNuevo, $pagoFijoId, getUsuarioId()]);
+                    propagarDiaPagoFijo($pagoFijoId, $diaNuevo);
+                } else {
+                    $nombreAnterior = (string) ($cuenta['nombre'] ?? $nombre);
+                    propagarDiaAdicional($nombreAnterior, $diaNuevo, $id);
+                    if ($nombreAnterior !== $nombre) {
+                        propagarDiaAdicional($nombre, $diaNuevo, $id);
+                    }
+                }
+                flash('success', 'Fecha actualizada. El cambio se aplica desde hoy; los meses anteriores no se mueven.');
+            } else {
+                flash('success', 'Cuenta actualizada correctamente.');
+            }
         } else {
             $stmt = $db->prepare("
                 INSERT INTO cuentas (usuario_id, nombre, monto, fecha_vencimiento, tipo_pago_id, valor_asignado, estado, fecha_pago, notas, mes, anio)
@@ -150,6 +170,9 @@ require __DIR__ . '/includes/header.php';
                 <div class="col-md-6">
                     <label for="fecha_vencimiento" class="form-label">Fecha de vencimiento *</label>
                     <input type="date" class="form-control" id="fecha_vencimiento" name="fecha_vencimiento" value="<?= h($data['fecha_vencimiento']) ?>" required>
+                    <?php if ($id): ?>
+                        <div class="form-text">Si cambias el día, las otras fechas iguales se mueven desde hoy. Los meses anteriores no cambian.</div>
+                    <?php endif; ?>
                 </div>
             </div>
 

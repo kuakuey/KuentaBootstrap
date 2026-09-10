@@ -49,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db = getDB();
 
         if ($id) {
+            $diaAnterior = (int) (($pago ?? [])['dia_pago'] ?? 0);
             $stmt = $db->prepare('
                 UPDATE pagos_fijos
                 SET nombre = ?, dia_pago = ?, tipo_monto = ?, monto = ?, persona_id = ?, tipo_pago_id = ?, notas = ?, activo = ?
@@ -60,8 +61,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 propagarMontoFijo($id, $monto);
             }
             propagarPersonaPagoFijo($id, $personaId);
+            if ($diaAnterior !== $diaPago) {
+                propagarDiaPagoFijo($id, $diaPago);
+            }
 
-            flash('success', 'Fecha de pago actualizada.');
+            flash('success', $diaAnterior !== $diaPago
+                ? 'Fecha actualizada. El nuevo día se aplica desde hoy; los meses anteriores no cambian.'
+                : 'Fecha de pago actualizada.');
         } else {
             $stmt = $db->prepare('
                 INSERT INTO pagos_fijos (usuario_id, nombre, dia_pago, tipo_monto, monto, persona_id, tipo_pago_id, notas, activo)
@@ -189,6 +195,9 @@ require __DIR__ . '/includes/header.php';
                         </option>
                     <?php endfor; ?>
                 </select>
+                <?php if ($id): ?>
+                    <div class="form-text">Si cambias el día, se mueve desde hoy en adelante. Los meses que ya pasaron se quedan como están.</div>
+                <?php endif; ?>
             </div>
 
             <div class="mb-3">
